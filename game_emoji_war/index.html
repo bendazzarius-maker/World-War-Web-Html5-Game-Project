@@ -215,6 +215,22 @@
           <label><input type="radio" name="gameMode" value="local" checked> Local Game</label>
           <label><input type="radio" name="gameMode" value="online"> Online Multiplayer</label>
         </div>
+        <div id="gamepadConfig" style="margin-top: 10px;">
+          <h2>Gamepad Mapping</h2>
+          <div>
+            <label>Fire Button: <input type="number" id="gpFire" min="0" style="width:50px;"></label>
+          </div>
+          <div>
+            <label>Jump Button: <input type="number" id="gpJump" min="0" style="width:50px;"></label>
+          </div>
+          <div>
+            <label>Weapon Change Button: <input type="number" id="gpWeaponChange" min="0" style="width:50px;"></label>
+          </div>
+          <div>
+            <label>Validate Button: <input type="number" id="gpValidate" min="0" style="width:50px;"></label>
+          </div>
+          <button id="saveGamepadMapping">Save Mapping</button>
+        </div>
         <!-- New two-column layout for Team Customization and Level Editor -->
         <div id="start-columns" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 20px;">
           <div id="teamCustomizationColumn" style="flex: 1; min-width: 280px;">
@@ -512,9 +528,28 @@
       document.getElementById("turnTimerDisplay").style.display = "none";
       document.getElementById("languageSelection").style.display = "none";
     });
+    function loadGamepadMapping() {
+      const mapping = JSON.parse(localStorage.getItem("gamepadMapping"));
+      if (mapping) {
+        document.getElementById("gpFire").value = mapping.fire ?? 0;
+        document.getElementById("gpJump").value = mapping.jump ?? 1;
+        document.getElementById("gpWeaponChange").value = mapping.weaponChange ?? 2;
+        document.getElementById("gpValidate").value = mapping.validate ?? 3;
+      }
+    }
+    document.getElementById("saveGamepadMapping").addEventListener("click", () => {
+      const mapping = {
+        fire: parseInt(document.getElementById("gpFire").value),
+        jump: parseInt(document.getElementById("gpJump").value),
+        weaponChange: parseInt(document.getElementById("gpWeaponChange").value),
+        validate: parseInt(document.getElementById("gpValidate").value)
+      };
+      localStorage.setItem("gamepadMapping", JSON.stringify(mapping));
+    });
 
     document.addEventListener("DOMContentLoaded", () => {
       populateEmojiDropdowns();
+      loadGamepadMapping();
     });
   </script>
   <script>

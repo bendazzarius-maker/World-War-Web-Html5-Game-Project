@@ -339,6 +339,9 @@ const angleIncrement = 0.1; // Adjusted angle change step for noticeable rotatio
 
 // Add global flag to ensure we wait for explosion animation before proceeding to next turn.
 let explosionScheduled = false;
+// Track projectile state
+let projectileInFlight = false;
+let currentProjectile = null;
 
 // Keyboard controls and aiming adjustments
 document.addEventListener('keydown', (event) => {
@@ -467,10 +470,10 @@ async function nextTurn() {
       activeWorm = currentTeam.find(worm => worm.health > 0);
       updateActiveTeamIndicator();
       currentAngle = 0;
-      isPaused = true;  // Block timer and commands until turn message is validated
+      pauseTurnTimer(); // Block timer and commands until turn message is validated
       await showTurnChangeMessage(teamOrder[currentTeamIndex]);
       explosionScheduled = false;
-      isPaused = false;
+      resumeTurnTimer();
       startTurnTimer();
       return;
     }
@@ -553,6 +556,8 @@ function fireWeaponWithForce(weaponType, worm, force) {
       break;
   }
   activeWorm = null;
+  projectileInFlight = true;
+  currentProjectile = projectile;
   waitForProjectileToStop(projectile);
 }
 
@@ -561,8 +566,10 @@ function fireWeapon(weaponType, worm) {
   const endX = worm.position.x + 35 * Math.cos(currentAngle);
   const endY = worm.position.y - 35 * Math.sin(currentAngle);
   // Increase carrot's base speed by 25%
-  const projectile = fireProjectile(worm, 23.4375, 0.12, '🥕', weaponDamage['carrot'], false, currentAngle, endX, endY); 
+  const projectile = fireProjectile(worm, 23.4375, 0.12, '🥕', weaponDamage['carrot'], false, currentAngle, endX, endY);
   activeWorm = null;
+  projectileInFlight = true;
+  currentProjectile = projectile;
   waitForProjectileToStop(projectile);
 }
 
@@ -622,10 +629,7 @@ Matter.Events.on(engine, 'collisionStart', function(event) {
       const terrain = pair.bodyA.isTerrain ? pair.bodyA : pair.bodyB;
       World.remove(world, terrain);
       World.remove(world, projectile);
-      if (!explosionScheduled) {
-        explosionScheduled = true;
-        startExplosionAnimation(projectile.position.x, projectile.position.y, projectile.damage, projectile.explosionRadius);
-      }
+      onProjectileFinished(projectile.position.x, projectile.position.y, projectile.damage, projectile.explosionRadius);
     }
 
     // Case 2: Worm collides with water.
@@ -635,7 +639,9 @@ Matter.Events.on(engine, 'collisionStart', function(event) {
       applyDamageToWorm(worm, 25);
       if (!explosionScheduled) {
         explosionScheduled = true;
-        startExplosionAnimation(worm.position.x, worm.position.y, 25, wormRadius);
+        startExplosionAnimation(worm.position.x, worm.position.y, 25, wormRadius, () => {
+          nextTurn();
+        });
       }
     }
 
@@ -646,16 +652,20 @@ Matter.Events.on(engine, 'collisionStart', function(event) {
       const worm = pair.bodyA.team ? pair.bodyA : pair.bodyB;
       applyDamageToWorm(worm, projectile.damage);
       World.remove(world, projectile);
-      if (!explosionScheduled) {
-        explosionScheduled = true;
-        startExplosionAnimation(projectile.position.x, projectile.position.y, projectile.damage, projectile.explosionRadius);
-      }
+      onProjectileFinished(projectile.position.x, projectile.position.y, projectile.damage, projectile.explosionRadius);
     }
   }
 });
 
 Matter.Events.on(engine, 'afterUpdate', function() {
   const now = performance.now();
+
+  if (projectileInFlight && currentProjectile) {
+    if (currentProjectile.position.x < 0 || currentProjectile.position.x > canvas.width) {
+      onProjectileFinished();
+    }
+  }
+
   Object.keys(teams).forEach(team => {
     teams[team].forEach(worm => {
       // If a worm is outside the canvas bounds, apply damage at most once per second
@@ -736,7 +746,7 @@ function createExplosionEffect(x, y, explosionRadius) {
   }, 1000);
 }
 
-function startExplosionAnimation(x, y, damage, explosionRadius) {
+function startExplosionAnimation(x, y, damage, explosionRadius, callback) {
   // Play explosion sound effect when an explosion occurs
   const explosionAudio = new Audio('/Explosion.mp3');
   explosionAudio.play();
@@ -800,12 +810,28 @@ function startExplosionAnimation(x, y, damage, explosionRadius) {
       }
 
       setTimeout(() => {
-        nextTurn();
+        if (typeof callback === 'function') {
+          callback();
+        }
       }, 500); // Small delay before turn change
     }
   }
 
   requestAnimationFrame(drawExplosion);
+}
+
+function onProjectileFinished(x, y, damage, explosionRadius) {
+  if (explosionScheduled) return;
+  explosionScheduled = true;
+  projectileInFlight = false;
+  currentProjectile = null;
+  if (x !== undefined && y !== undefined && damage !== undefined && explosionRadius !== undefined) {
+    startExplosionAnimation(x, y, damage, explosionRadius, () => {
+      nextTurn();
+    });
+  } else {
+    nextTurn();
+  }
 }
 
 function updateHealthBars() {
@@ -1022,37 +1048,23 @@ async function showTurnChangeMessage(team) {
 
 function waitForProjectileToStop(projectile) {
   const speedThreshold = 0.5;
-  const checkInterval = setInterval(() => {
-    // If projectile goes out of the canvas, immediately trigger next turn
-    if (
-      projectile.position.x < 0 ||
-      projectile.position.x > canvas.width ||
-      projectile.position.y < 0 ||
-      projectile.position.y > canvas.height
-    ) {
-      clearInterval(checkInterval);
-      if (!explosionScheduled) {
-        explosionScheduled = true;
-        nextTurn();
-      }
-      return;
-    }
-    
-    if (explosionScheduled) {
-      clearInterval(checkInterval);
+
+  const intervalId = setInterval(() => {
+    if (explosionScheduled || !projectileInFlight) {
+      clearInterval(intervalId);
       return;
     }
     const speed = Math.sqrt(projectile.velocity.x ** 2 + projectile.velocity.y ** 2);
-    if (speed < speedThreshold) {
-      clearInterval(checkInterval);
-      setTimeout(() => {
-        if (!explosionScheduled) {
-          explosionScheduled = true;
-          nextTurn();
-        }
-      }, 500);
+    if (projectile.isSleeping || speed < speedThreshold) {
+      clearInterval(intervalId);
+      onProjectileFinished(projectile.position.x, projectile.position.y, projectile.damage, projectile.explosionRadius);
     }
   }, 100);
+
+  Matter.Events.on(projectile, 'beforeRemove', () => {
+    clearInterval(intervalId);
+    onProjectileFinished(projectile.position.x, projectile.position.y, projectile.damage, projectile.explosionRadius);
+  });
 }
 
 window.addEventListener("gamepadconnected", function(e) {
@@ -1069,31 +1081,55 @@ function updateGamepad() {
     for (let gp of gamepads) {
       if (!gp) continue;
 
-      // --- Improved PS5 DualSense and Xbox Controller Mapping ---
-      // PS5 (DualSense) standard mapping:
-      // 0 = Square   (weapon change)
-      // 1 = Cross    (fire)
-      // 2 = Circle   (jump)
-      // 3 = Triangle (validate)
-      // Xbox mapping:
-      // 0 = A   (fire)
-      // 1 = B   (jump)
-      // 2 = X   (weapon change)
-      // 3 = Y   (validate)
+      // --- Controller mapping resolution ---
+      const id = gp.id ? gp.id.toLowerCase() : "";
+      let idxWeaponChange, idxFire, idxJump, idxValidate;
 
-      let isDualSense = gp.id && gp.id.toLowerCase().includes("dualsense");
-      let isXbox = gp.id && gp.id.toLowerCase().includes("xbox");
-      // PS5 mapping
-      let idxWeaponChange = 0, idxFire = 1, idxJump = 2, idxValidate = 3;
-      // Xbox mapping
-      if (isXbox) {
+      // Custom mapping takes precedence if defined by the user
+      const storedMapping = JSON.parse(localStorage.getItem("gamepadMapping"));
+      if (storedMapping) {
+        idxFire = storedMapping.fire;
+        idxJump = storedMapping.jump;
+        idxWeaponChange = storedMapping.weaponChange;
+        idxValidate = storedMapping.validate;
+      } else if (gp.mapping === "standard") {
+        // Standard Gamepad API mapping
+        idxFire = 0; // Bottom button (Cross/A/B)
+        idxJump = 1; // Right button (Circle/B/A)
+        idxWeaponChange = 2; // Left button (Square/X/Y)
+        idxValidate = 3; // Top button (Triangle/Y/X)
+      } else if (id.includes("dualsense")) {
+        // PlayStation 5 DualSense custom mapping
+        idxWeaponChange = 0;
+        idxFire = 1;
+        idxJump = 2;
+        idxValidate = 3;
+      } else if (id.includes("xbox")) {
+        idxFire = 0;
+        idxJump = 1;
+        idxWeaponChange = 2;
+        idxValidate = 3;
+      } else if (id.includes("pro controller") || id.includes("switch")) {
+        // Nintendo Switch Pro Controller mapping
+        idxFire = 0;
+        idxJump = 1;
+        idxWeaponChange = 2;
+        idxValidate = 3;
+      } else if (id.includes("generic")) {
+        // Generic controllers fall back to a standard layout
+        idxFire = 0;
+        idxJump = 1;
+        idxWeaponChange = 2;
+        idxValidate = 3;
+      } else {
+        // Default fallback
         idxFire = 0;
         idxJump = 1;
         idxWeaponChange = 2;
         idxValidate = 3;
       }
 
-      // Fallback for non-identified controllers (assume PS/Xbox style layout)
+      // Retrieve button states using resolved indices
       let buttons = gp.buttons;
       let fireButtonPressed = buttons[idxFire]?.pressed;
       let jumpPressed = buttons[idxJump]?.pressed;
