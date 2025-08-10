@@ -1055,6 +1055,52 @@ function waitForProjectileToStop(projectile) {
   }, 100);
 }
 
+const defaultButtonMapping = { fire: 0, jump: 1, weaponChange: 2, validate: 3 };
+let buttonMapping = JSON.parse(localStorage.getItem('buttonMapping')) || defaultButtonMapping;
+let remapAction = null;
+
+function updateMappingDisplay() {
+  const fireEl = document.getElementById('mapFireIdx');
+  const jumpEl = document.getElementById('mapJumpIdx');
+  const weaponEl = document.getElementById('mapWeaponIdx');
+  const validateEl = document.getElementById('mapValidateIdx');
+  if (fireEl) fireEl.textContent = buttonMapping.fire;
+  if (jumpEl) jumpEl.textContent = buttonMapping.jump;
+  if (weaponEl) weaponEl.textContent = buttonMapping.weaponChange;
+  if (validateEl) validateEl.textContent = buttonMapping.validate;
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  updateMappingDisplay();
+  const mapFireBtn = document.getElementById('mapFireBtn');
+  const mapJumpBtn = document.getElementById('mapJumpBtn');
+  const mapWeaponBtn = document.getElementById('mapWeaponBtn');
+  const mapValidateBtn = document.getElementById('mapValidateBtn');
+  if (mapFireBtn) mapFireBtn.addEventListener('click', () => { remapAction = 'fire'; });
+  if (mapJumpBtn) mapJumpBtn.addEventListener('click', () => { remapAction = 'jump'; });
+  if (mapWeaponBtn) mapWeaponBtn.addEventListener('click', () => { remapAction = 'weaponChange'; });
+  if (mapValidateBtn) mapValidateBtn.addEventListener('click', () => { remapAction = 'validate'; });
+});
+
+function applyDefaultMapping(gp) {
+  if (localStorage.getItem('buttonMapping')) return;
+  if (gp.mapping === 'standard') {
+    buttonMapping = { fire: 0, jump: 1, weaponChange: 2, validate: 3 };
+  } else {
+    const id = gp.id.toLowerCase();
+    if (id.includes('dualsense')) {
+      buttonMapping = { fire: 1, jump: 2, weaponChange: 0, validate: 3 };
+    } else if (id.includes('xbox')) {
+      buttonMapping = { fire: 0, jump: 1, weaponChange: 2, validate: 3 };
+    } else if (id.includes('switch') && id.includes('pro')) {
+      buttonMapping = { fire: 1, jump: 0, weaponChange: 2, validate: 3 };
+    } else {
+      buttonMapping = { fire: 0, jump: 1, weaponChange: 2, validate: 3 };
+    }
+  }
+  updateMappingDisplay();
+}
+
 window.addEventListener("gamepadconnected", function(e) {
   console.log("Gamepad connected:", e.gamepad);
 });
@@ -1069,36 +1115,24 @@ function updateGamepad() {
     for (let gp of gamepads) {
       if (!gp) continue;
 
-      // --- Improved PS5 DualSense and Xbox Controller Mapping ---
-      // PS5 (DualSense) standard mapping:
-      // 0 = Square   (weapon change)
-      // 1 = Cross    (fire)
-      // 2 = Circle   (jump)
-      // 3 = Triangle (validate)
-      // Xbox mapping:
-      // 0 = A   (fire)
-      // 1 = B   (jump)
-      // 2 = X   (weapon change)
-      // 3 = Y   (validate)
+      applyDefaultMapping(gp);
 
-      let isDualSense = gp.id && gp.id.toLowerCase().includes("dualsense");
-      let isXbox = gp.id && gp.id.toLowerCase().includes("xbox");
-      // PS5 mapping
-      let idxWeaponChange = 0, idxFire = 1, idxJump = 2, idxValidate = 3;
-      // Xbox mapping
-      if (isXbox) {
-        idxFire = 0;
-        idxJump = 1;
-        idxWeaponChange = 2;
-        idxValidate = 3;
+      if (remapAction) {
+        gp.buttons.forEach((btn, idx) => {
+          if (btn.pressed) {
+            buttonMapping[remapAction] = idx;
+            localStorage.setItem('buttonMapping', JSON.stringify(buttonMapping));
+            updateMappingDisplay();
+            remapAction = null;
+          }
+        });
       }
 
-      // Fallback for non-identified controllers (assume PS/Xbox style layout)
       let buttons = gp.buttons;
-      let fireButtonPressed = buttons[idxFire]?.pressed;
-      let jumpPressed = buttons[idxJump]?.pressed;
-      let weaponChangePressed = buttons[idxWeaponChange]?.pressed;
-      let okButtonPressed = buttons[idxValidate]?.pressed;
+      let fireButtonPressed = buttons[buttonMapping.fire]?.pressed;
+      let jumpPressed = buttons[buttonMapping.jump]?.pressed;
+      let weaponChangePressed = buttons[buttonMapping.weaponChange]?.pressed;
+      let okButtonPressed = buttons[buttonMapping.validate]?.pressed;
 
       // --- Block all controls except validation when turn message overlay is active ---
       if (overlay) {

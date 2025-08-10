@@ -330,6 +330,13 @@
   </div>
   <div id="endGameOverlay"></div>
   <audio id="backgroundMusic" src="/music-royalty-free-use.mp3" loop style="display:none;"></audio>
+  <div id="configPanel" style="position:fixed;top:10px;right:10px;background:rgba(255,255,255,0.8);padding:10px;border:1px solid #000;z-index:2000;">
+    <h3>Controller Mapping</h3>
+    <div>Fire: <button id="mapFireBtn">Set</button> <span id="mapFireIdx"></span></div>
+    <div>Jump: <button id="mapJumpBtn">Set</button> <span id="mapJumpIdx"></span></div>
+    <div>Weapon: <button id="mapWeaponBtn">Set</button> <span id="mapWeaponIdx"></span></div>
+    <div>Validate: <button id="mapValidateBtn">Set</button> <span id="mapValidateIdx"></span></div>
+  </div>
   <script>
     // Réduire le volume de la musique de fond de 60% (utiliser 40% du volume maximum)
     const bgMusic = document.getElementById("backgroundMusic");
