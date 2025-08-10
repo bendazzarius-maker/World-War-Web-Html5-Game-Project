@@ -336,83 +336,98 @@ let launchForce = 0;
 let isCharging = false;
 let currentAngle = 0; // Initial fire orientation
 const angleIncrement = 0.1; // Adjusted angle change step for noticeable rotation
+let chargeInterval = null;
 
 // Add global flag to ensure we wait for explosion animation before proceeding to next turn.
 let explosionScheduled = false;
 
-// Keyboard controls and aiming adjustments
-document.addEventListener('keydown', (event) => {
-  const turnOverlay = document.getElementById("turnOverlay");
-  // If a turn message is displayed and the event target is not the continue button, block the event.
-  if (turnOverlay && event.target.id !== "continueButton") { 
-    event.preventDefault(); 
-    return; 
-  }
-  
+// Unified input handling
+const { Actions, on } = InputManager;
+
+function overlayActive() {
+  return document.getElementById("turnOverlay");
+}
+
+on(Actions.AIM_UP, () => {
+  if (overlayActive()) return;
+  currentAngle += angleIncrement;
+});
+
+on(Actions.AIM_DOWN, () => {
+  if (overlayActive()) return;
+  currentAngle -= angleIncrement;
+});
+
+on(Actions.MOVE_LEFT, () => {
+  if (overlayActive() || !activeWorm) return;
+  Body.setVelocity(activeWorm, { x: -2, y: activeWorm.velocity.y });
+});
+
+on(Actions.MOVE_RIGHT, () => {
+  if (overlayActive() || !activeWorm) return;
+  Body.setVelocity(activeWorm, { x: 2, y: activeWorm.velocity.y });
+});
+
+on(Actions.JUMP, () => {
+  if (overlayActive() || !activeWorm) return;
+  jumpWorm(activeWorm);
+});
+
+on(Actions.FIRE_START, () => {
+  if (overlayActive()) return;
   if (!activeWorm) {
     nextTurn();
     return;
   }
-  switch (event.key) {
-    case 'ArrowUp':
-      currentAngle += angleIncrement;
-      break;
-    case 'ArrowDown':
-      currentAngle -= angleIncrement;
-      break;
-    case 'ArrowLeft':
-      Body.setVelocity(activeWorm, { x: -2, y: activeWorm.velocity.y });
-      break;
-    case 'ArrowRight':
-      Body.setVelocity(activeWorm, { x: 2, y: activeWorm.velocity.y });
-      break;
-    case ' ': // Spacebar: Improved Jump
-      jumpWorm(activeWorm);
-      break;
-    case 'Enter': // Enter: Fire weapon
-      event.preventDefault();
-      if (weaponSelect.value === 'apple' || weaponSelect.value === 'banana') {
-        if (!isCharging) { 
-          isCharging = true;
-          launchForce = 0;
-          const chargeInterval = setInterval(() => {
-            if (!isCharging) {
-              clearInterval(chargeInterval);
-              chargeBar.style.width = '0%';
-              return;
-            }
-            launchForce += 0.5;
-            if (launchForce >= 50) {
-              launchForce = 50;
-              chargeBar.style.width = '100%';
-              isCharging = false;
-              fireWeaponWithForce(weaponSelect.value, activeWorm, launchForce);
-              clearInterval(chargeInterval);
-            } else {
-              chargeBar.style.width = `${(launchForce / 50) * 100}%`;
-            }
-          }, 50);
+  if (weaponSelect.value === 'apple' || weaponSelect.value === 'banana') {
+    if (!isCharging) {
+      isCharging = true;
+      launchForce = 0;
+      chargeInterval = setInterval(() => {
+        if (!isCharging) {
+          clearInterval(chargeInterval);
+          chargeBar.style.width = '0%';
+          return;
         }
-      } else {
-        fireWeapon(weaponSelect.value, activeWorm);
-      }
-      break;
+        launchForce += 0.5;
+        if (launchForce >= 50) {
+          launchForce = 50;
+          chargeBar.style.width = '100%';
+          isCharging = false;
+          fireWeaponWithForce(weaponSelect.value, activeWorm, launchForce);
+          clearInterval(chargeInterval);
+        } else {
+          chargeBar.style.width = `${(launchForce / 50) * 100}%`;
+        }
+      }, 50);
+    }
+  } else {
+    fireWeapon(weaponSelect.value, activeWorm);
   }
 });
 
-document.addEventListener('keyup', (event) => {
-  const turnOverlay = document.getElementById("turnOverlay");
-  if (turnOverlay && event.target.id !== "continueButton") { 
-    event.preventDefault(); 
-    return; 
-  }
-  
-  if (event.key === 'Enter' && isCharging) {
+on(Actions.FIRE_END, () => {
+  if (overlayActive()) return;
+  if (isCharging) {
     isCharging = false;
     fireWeaponWithForce(weaponSelect.value, activeWorm, launchForce);
     launchForce = 0;
     chargeBar.style.width = '0%';
+    if (chargeInterval) {
+      clearInterval(chargeInterval);
+      chargeInterval = null;
+    }
   }
+});
+
+on(Actions.CHANGE_WEAPON, () => {
+  if (overlayActive()) return;
+  let currentIndex = weaponSelect.selectedIndex;
+  let nextIndex = (currentIndex + 1) % weaponSelect.options.length;
+  weaponSelect.selectedIndex = nextIndex;
+  weaponDamageIndicator.textContent = `Damage: ${weaponDamage[weaponSelect.value]}`;
+  let weaponSelectBar = document.getElementById("weaponSelectBar");
+  if (weaponSelectBar) weaponSelectBar.selectedIndex = nextIndex;
 });
 
 // 
@@ -1055,118 +1070,6 @@ function waitForProjectileToStop(projectile) {
   }, 100);
 }
 
-window.addEventListener("gamepadconnected", function(e) {
-  console.log("Gamepad connected:", e.gamepad);
-});
-window.addEventListener("gamepaddisconnected", function(e) {
-  console.log("Gamepad disconnected:", e.gamepad);
-});
-
-function updateGamepad() {
-  const overlay = document.getElementById("turnOverlay");
-  const gamepads = navigator.getGamepads();
-  if (gamepads) {
-    for (let gp of gamepads) {
-      if (!gp) continue;
-
-      // --- Improved PS5 DualSense and Xbox Controller Mapping ---
-      // PS5 (DualSense) standard mapping:
-      // 0 = Square   (weapon change)
-      // 1 = Cross    (fire)
-      // 2 = Circle   (jump)
-      // 3 = Triangle (validate)
-      // Xbox mapping:
-      // 0 = A   (fire)
-      // 1 = B   (jump)
-      // 2 = X   (weapon change)
-      // 3 = Y   (validate)
-
-      let isDualSense = gp.id && gp.id.toLowerCase().includes("dualsense");
-      let isXbox = gp.id && gp.id.toLowerCase().includes("xbox");
-      // PS5 mapping
-      let idxWeaponChange = 0, idxFire = 1, idxJump = 2, idxValidate = 3;
-      // Xbox mapping
-      if (isXbox) {
-        idxFire = 0;
-        idxJump = 1;
-        idxWeaponChange = 2;
-        idxValidate = 3;
-      }
-
-      // Fallback for non-identified controllers (assume PS/Xbox style layout)
-      let buttons = gp.buttons;
-      let fireButtonPressed = buttons[idxFire]?.pressed;
-      let jumpPressed = buttons[idxJump]?.pressed;
-      let weaponChangePressed = buttons[idxWeaponChange]?.pressed;
-      let okButtonPressed = buttons[idxValidate]?.pressed;
-
-      // --- Block all controls except validation when turn message overlay is active ---
-      if (overlay) {
-        // Only process validate (Triangle/Y) button
-        if (okButtonPressed && !window.prevGpOkButton) {
-          const continueBtn = document.getElementById("continueButton");
-          if (continueBtn) {
-            continueBtn.click();
-          }
-        }
-        window.prevGpOkButton = okButtonPressed;
-        // Skip processing all other gamepad inputs when the turn-change message is displayed.
-        continue;
-      }
-      
-      // Normal gamepad processing when no overlay is present.
-      if (activeWorm && jumpPressed && !window.prevGpJumpButton) {
-        jumpWorm(activeWorm);
-      }
-      window.prevGpJumpButton = jumpPressed;
-      
-      if (activeWorm && weaponChangePressed && !window.prevGpChangeWeapon) {
-        let currentIndex = weaponSelect.selectedIndex;
-        let nextIndex = (currentIndex + 1) % weaponSelect.options.length;
-        weaponSelect.selectedIndex = nextIndex;
-        weaponDamageIndicator.textContent = `Damage: ${weaponDamage[weaponSelect.value]}`;
-
-        // Sync weapon selection with interface bar
-        let weaponSelectBar = document.getElementById("weaponSelectBar");
-        if (weaponSelectBar) weaponSelectBar.selectedIndex = nextIndex;
-      }
-      window.prevGpChangeWeapon = weaponChangePressed;
-      
-      if (activeWorm) {
-        // "Fire" button press begins charging for apple/banana, tap for carrot
-        if (fireButtonPressed && !window.prevGpFireButton) {
-          if (weaponSelect.value === 'apple' || weaponSelect.value === 'banana') {
-            isCharging = true;
-            launchForce = 0;
-          } else {
-            fireWeapon(weaponSelect.value, activeWorm);
-          }
-        }
-        // "Fire" held: Increase launch force for apple/banana
-        if (fireButtonPressed && isCharging && (weaponSelect.value === 'apple' || weaponSelect.value === 'banana')) {
-          launchForce += 0.5;
-          if (launchForce >= 50) {
-            launchForce = 50;
-            chargeBar.style.width = '100%';
-          } else {
-            chargeBar.style.width = `${(launchForce / 50) * 100}%`;
-          }
-        }
-        // "Fire" released: Shoot
-        if (!fireButtonPressed && window.prevGpFireButton && isCharging && (weaponSelect.value === 'apple' || weaponSelect.value === 'banana')) {
-          isCharging = false;
-          fireWeaponWithForce(weaponSelect.value, activeWorm, launchForce);
-          launchForce = 0;
-          chargeBar.style.width = '0%';
-        }
-        window.prevGpFireButton = fireButtonPressed;
-      }
-    }
-  }
-  requestAnimationFrame(updateGamepad);
-}
-
-updateGamepad();
 
 function showEndGameOverlay(winningTeam) {
   const overlay = document.getElementById("endGameOverlay");
