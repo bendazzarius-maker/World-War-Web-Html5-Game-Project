@@ -1,0 +1,13 @@
+  const affectedPixels = destructiblePixels.filter(pixel => {
+    const dx = pixel.position.x - x;
+    const dy = pixel.position.y - y;
+    return Math.sqrt(dx * dx + dy * dy) < explosionRadius;
+  });
+  affectedPixels.forEach(pixel => {
+    World.remove(world, pixel);
+    const index = destructiblePixels.indexOf(pixel);
+    if (index > -1) {
+      destructiblePixels.splice(index, 1);
+    }
+  });
+

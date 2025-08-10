@@ -1,0 +1,1279 @@
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emoji World War Web</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: #ADD8E6;
+    }
+    /* Ensure the canvas fills the viewport */
+    #gameCanvas {
+      background-color: #7FFF00;
+      width: 100vw;
+      height: 100vh;
+    }
+    /* Hide the control interface by default so it appears only in game mode */
+    #interfaceBar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 2vh;
+      height: 8vh;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 1000;
+    }
+    /* Make buttons and selects in the bottom interface scale with viewport */
+    #interfaceBar button,
+    #interfaceBar select {
+      font-size: 2vh;
+      padding: 0.5vh 1vw;
+    }
+    /* Adjust the UI container to use relative sizing */
+    #uiContainer {
+      position: absolute;
+      top: 1vh;
+      left: 1vw;
+      background-color: rgba(255, 255, 255, 0.5);
+      padding: 1vh 1vw;
+      border-radius: 5px;
+      display: none;
+      flex-direction: column;
+      align-items: flex-start;
+      font-size: 2vh;
+    }
+    /* Update start menu container for responsiveness */
+    .menu-container {
+      max-width: 600px;
+      width: 90%;
+    }
+    /* Hide the control interface by default so that it appears only in game mode */
+    #interfaceBar {
+      display: none;
+    }
+    /* Updated start menu style to display full content without scrolling */
+    #startMenu {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden; 
+      box-sizing: border-box;
+      padding: 10px;  
+      background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.6)),
+                url("/WorldWarWeb.png") no-repeat center center;
+      background-size: cover;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+    }
+    /* New container to keep start menu content neatly organized within a fixed maximum width */
+    .menu-container {
+      max-width: 600px;
+      width: 90%;
+      margin: 0 auto;
+    }
+    #startMenu h1 {
+      font-size: 48px;
+      margin-bottom: 20px;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+    }
+    /* Style containers within the start menu: time selection and team customization */
+    #startMenu #timeGameContainer,
+    #startMenu .team-customization {
+      background: rgba(255, 255, 255, 0.3);
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+    /* Style for buttons in the start menu */
+    #startMenu button {
+      padding: 10px 20px;
+      font-size: 1.2em;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      background-color: #FFD700;
+      color: #000;
+      margin-top: 10px;
+      transition: background-color 0.3s;
+    }
+    #startMenu button:hover {
+      background-color: #FFC107;
+    }
+    /* Retain other existing CSS rules below */
+    .emoji, .team-color-indicator, .touch-button, #endGameOverlay .winnerEmoji {
+      font-family: "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif;
+    }
+    #healthBar {
+      width: 100px;
+      height: 10px;
+      background-color: red;
+    }
+    #weaponSelect {
+      margin-top: 5px;
+    }
+    .team-color-indicator {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      margin-right: 5px;
+    }
+    .team-info {
+      display: flex;
+      align-items: center;
+      margin-bottom: 5px;
+    }
+    #activeTeam {
+      font-size: 1.2em;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    #chargeBarContainer {
+      width: 100px;
+      height: 10px;
+      background-color: #ddd;
+      margin-top: 5px;
+      border-radius: 5px;
+      overflow: hidden;
+    }
+    #chargeBar {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(to right, green, orange, red);
+      border-radius: 5px;
+      transition: width 0.2s;
+    }
+    #interfaceBar {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 10px;
+      height: 50px;
+      background-color: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: space-around;
+      align-items: center;
+      z-index: 1000;
+    }
+    #interfaceBar button, #interfaceBar select {
+      font-size: 16px;
+      padding: 5px 10px;
+      background: #FFD700;
+      border: none;
+      border-radius: 5px;
+      color: #000;
+      cursor: pointer;
+    }
+    #interfaceBar select {
+      background: #fff;
+    }
+    .menu-wrapper {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      width: 100%;
+      max-width: 800px;
+    }
+    #languageSelectionMenu {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-left: 20px;
+      align-items: center;
+    }
+  </style>
+</head>
+<body>
+  <!-- Wrap all start menu contents in a container for improved layout -->
+  <div id="startMenu">
+    <div class="menu-wrapper">
+      <div class="menu-container">
+        <h1>Emoji World War Web</h1>
+        <div id="timeGameContainer" style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 10px;">
+          <label for="timeLimit"></label>
+          <select id="timeLimit">
+            <option value="10">10 seconds</option>
+            <option value="15">15 seconds</option>
+            <option value="20">20 seconds</option>
+            <option value="30">30 seconds</option>
+          </select>
+          <button id="startGameButton">Start Game</button>
+        </div>
+        <!-- NEW: Fullscreen button for the starting menu -->
+        <button id="btnFullscreenStart">Fullscreen</button>
+        <h2 id="gameMode"></h2>
+        <div>
+          <label><input type="radio" name="gameMode" value="local" checked> Local Game</label>
+          <label><input type="radio" name="gameMode" value="online"> Online Multiplayer</label>
+        </div>
+        <!-- New two-column layout for Team Customization and Level Editor -->
+        <div id="start-columns" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; margin-top: 20px;">
+          <div id="teamCustomizationColumn" style="flex: 1; min-width: 280px;">
+            <h2>Team Customization</h2>
+            <div class="team-customization">
+              <label for="yellowTeamName">Yellow Team Name:</label>
+              <input type="text" id="yellowTeamName" value="Yellow Team">
+              <label for="yellowTeamEmoji">Emoji:</label>
+              <select id="yellowTeamEmoji" class="emoji-select"></select>
+            </div>
+            <div class="team-customization">
+              <label for="blueTeamName">Blue Team Name:</label>
+              <input type="text" id="blueTeamName" value="Blue Team">
+              <label for="blueTeamEmoji">Emoji:</label>
+              <select id="blueTeamEmoji" class="emoji-select"></select>
+            </div>
+            <div class="team-customization">
+              <label for="greenTeamName">Green Team Name:</label>
+              <input type="text" id="greenTeamName" value="Green Team">
+              <label for="greenTeamEmoji">Emoji:</label>
+              <select id="greenTeamEmoji" class="emoji-select"></select>
+            </div>
+            <div class="team-customization">
+              <label for="violetTeamName">Violet Team Name:</label>
+              <input type="text" id="violetTeamName" value="Violet Team">
+              <label for="violetTeamEmoji">Emoji:</label>
+              <select id="violetTeamEmoji" class="emoji-select"></select>
+            </div>
+            <button id="randomizeTeamsButton">🎲 Randomize Teams</button>
+          </div>
+          <div id="levelEditorColumn" style="flex: 1; min-width: 280px;">
+            <div id="levelEditor" style="margin-top: 0;">
+              <h2 id="levelEditorTitle"></h2>
+              <label id="terrainSmoothnessLabel" for="terrainSmoothness"></label>
+              <input type="range" id="terrainSmoothness" min="1" max="20" value="10">
+              <span id="terrainSmoothnessValue">10</span><br>
+              <label id="terrainMinHeightLabel" for="terrainMinHeight"></label>
+              <input type="number" id="terrainMinHeight" value="350"><br>
+              <label id="terrainMaxHeightLabel" for="terrainMaxHeight"></label>
+              <input type="number" id="terrainMaxHeight" value="450"><br>
+              <button id="generateLevelButton"></button>
+              <div id="levelPreview" style="margin-top:10px; border: 1px solid #000; width:300px; height:150px;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="languageSelectionMenu">
+        <img src="https://flagcdn.com/w40/fr.png" class="language-button" data-lang="fr" title="Français">
+        <img src="https://flagcdn.com/w40/gb.png" class="language-button" data-lang="en" title="English">
+        <img src="https://flagcdn.com/w40/es.png" class="language-button" data-lang="es" title="Español">
+        <img src="https://flagcdn.com/w40/de.png" class="language-button" data-lang="de" title="Deutsch">
+        <img src="https://flagcdn.com/w40/it.png" class="language-button" data-lang="it" title="Italiano">
+        <img src="https://flagcdn.com/w40/ru.png" class="language-button" data-lang="ru" title="Русский">
+        <img src="https://flagcdn.com/w40/pt.png" class="language-button" data-lang="pt" title="Português">
+        <img src="https://flagcdn.com/w40/cn.png" class="language-button" data-lang="zh" title="中文">
+        <img src="https://flagcdn.com/w40/jp.png" class="language-button" data-lang="ja" title="日本語">
+        <img src="https://flagcdn.com/w40/sa.png" class="language-button" data-lang="ar" title="العربية">
+      </div>
+    </div>
+  </div>
+  <canvas id="gameCanvas"></canvas>
+  <!-- New Interface Bar placed over the game canvas in the lower area -->
+  <div id="interfaceBar">
+    <button id="btnUp">↑</button>
+    <button id="btnDown">↓</button>
+    <button id="btnLeft">←</button>
+    <button id="btnRight">→</button>
+    <button id="btnJump">⏶ Jump</button>
+    <button id="btnFire">Fire</button>
+    <select id="weaponSelectBar">
+      <option value="apple">🍎 Apple</option>
+      <option value="banana">🍌 Banana</option>
+      <option value="carrot">🥕 Carrot</option>
+    </select>
+    <button id="btnFullscreen">Fullscreen</button>
+  </div>
+  <div id="uiContainer" style="display: none;">
+    <div id="activeTeam">Active Team:</div>
+    <div class="team-info" data-team="yellow">
+      <div class="team-color-indicator" style="font-size: 20px;">😀</div>
+      <span class="team-name">Team Yellow</span> - Health: <span id="teamYellowHealth">100</span>
+    </div>
+    <div class="team-info" data-team="blue">
+      <div class="team-color-indicator" style="font-size: 20px;">😎</div>
+      <span class="team-name">Team Blue</span> - Health: <span id="teamBlueHealth">100</span>
+    </div>
+    <div class="team-info" data-team="green">
+      <div class="team-color-indicator" style="font-size: 20px;">😂</div>
+      <span class="team-name">Team Green</span> - Health: <span id="teamGreenHealth">100</span>
+    </div>
+    <div class="team-info" data-team="violet">
+      <div class="team-color-indicator" style="font-size: 20px;">😍</div>
+      <span class="team-name">Team Violet</span> - Health: <span id="teamVioletHealth">100</span>
+    </div>
+    <select id="weaponSelect">
+      <option value="apple">🍎 Apple</option>
+      <option value="banana">🍌 Banana</option>
+      <option value="carrot">🥕 Carrot</option>
+    </select>
+    <span id="weaponDamage">Damage: 20</span>
+    <button id="fireButton">Fire</button>
+    <div id="chargeBarContainer">
+      <div id="chargeBar"></div>
+    </div>
+    <button id="restartButton">Restart Game</button>
+    <button id="endGameButton">End Game</button>
+    <!-- New Music On/Off Button -->
+    <button id="musicToggleButton" style="margin-top: 5px;">Music: On</button>
+  </div>
+  <div id="turnTimerDisplay" style="display: none;">10</div>
+  <div id="languageSelection">
+    __DELETE_ME__
+  </div>
+  <div id="endGameOverlay"></div>
+  <audio id="backgroundMusic" src="/music-royalty-free-use.mp3" loop style="display:none;"></audio>
+  <script>
+    // Réduire le volume de la musique de fond de 60% (utiliser 40% du volume maximum)
+    const bgMusic = document.getElementById("backgroundMusic");
+    if (bgMusic) {
+      bgMusic.volume = 0.4;
+    }
+  </script>
+  <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script src="js/game.js"></script>
+  <script>
+    function attachHoldButton(buttonId, callback, interval = 100) {
+      const btn = document.getElementById(buttonId);
+      let timer = null;
+      btn.addEventListener("mousedown", function(event) {
+        event.preventDefault();
+        callback();
+        timer = setInterval(callback, interval);
+      });
+      btn.addEventListener("mouseup", function() {
+        clearInterval(timer);
+      });
+      btn.addEventListener("mouseleave", function() {
+        clearInterval(timer);
+      });
+      btn.addEventListener("touchstart", function(event) {
+        event.preventDefault();
+        callback();
+        timer = setInterval(callback, interval);
+      });
+      btn.addEventListener("touchend", function() {
+        clearInterval(timer);
+      });
+    }
+
+    attachHoldButton('btnUp', () => {
+      currentAngle += angleIncrement;
+    });
+
+    attachHoldButton('btnDown', () => {
+      currentAngle -= angleIncrement;
+    });
+
+    attachHoldButton('btnLeft', () => {
+      if (activeWorm) {
+        Body.setVelocity(activeWorm, { x: -2, y: activeWorm.velocity.y });
+      }
+    });
+
+    attachHoldButton('btnRight', () => {
+      if (activeWorm) {
+        Body.setVelocity(activeWorm, { x: 2, y: activeWorm.velocity.y });
+      }
+    });
+
+    attachHoldButton('btnJump', () => {
+      if (activeWorm) {
+        jumpWorm(activeWorm);
+      }
+    });
+
+    (function(){
+      const weaponSelect = document.getElementById("weaponSelectBar");
+      let weaponSelectInterval = null;
+      
+      function changeWeaponSelection(direction) {
+        let currentIndex = weaponSelect.selectedIndex;
+        let newIndex = currentIndex + direction;
+        const optionsCount = weaponSelect.options.length;
+        if (newIndex < 0) newIndex = optionsCount - 1;
+        if (newIndex >= optionsCount) newIndex = 0;
+        weaponSelect.selectedIndex = newIndex;
+      }
+      
+      weaponSelect.addEventListener("keydown", function(e) {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          e.preventDefault();
+          changeWeaponSelection(e.key === "ArrowLeft" ? -1 : 1);
+          if (!weaponSelectInterval) {
+            weaponSelectInterval = setInterval(() => {
+              changeWeaponSelection(e.key === "ArrowLeft" ? -1 : 1);
+            }, 200);
+          }
+        }
+      });
+      
+      weaponSelect.addEventListener("keyup", function(e) {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          clearInterval(weaponSelectInterval);
+          weaponSelectInterval = null;
+        }
+      });
+      
+      weaponSelect.addEventListener("blur", function(){
+        clearInterval(weaponSelectInterval);
+        weaponSelectInterval = null;
+      });
+    })();
+  </script>
+  <script>
+    const availableEmojis = ['😀', '😎', '😂', '😍', '🤩', '😆', '😅', '🙂', '🙃', '🤣', '😊', '😇', '🥳', '😺', '😹', '😻'];
+    const selectedEmojis = new Set();
+
+    function populateEmojiDropdowns() {
+      document.querySelectorAll('.emoji-select').forEach(select => {
+        select.innerHTML = '';
+        availableEmojis.forEach(emoji => {
+          const option = document.createElement('option');
+          option.value = emoji;
+          option.textContent = emoji;
+          select.appendChild(option);
+        });
+
+        select.addEventListener('change', function () {
+          if (selectedEmojis.has(this.value)) {
+            alert('This emoji is already used by another team.');
+            this.value = this.options[0].value;
+          } else {
+            selectedEmojis.add(this.value);
+          }
+        });
+      });
+    }
+
+    async function findOnlinePlayers() {
+      const response = await fetch("/api/v1/user/feed");
+      const data = await response.json();
+      return data.feed.data.map(player => player.site.owner.username);
+    }
+
+    async function startOnlineGame() {
+      const availablePlayers = await findOnlinePlayers();
+      if (availablePlayers.length > 0) {
+        alert(`Available players: ${availablePlayers.join(", ")}`);
+        // Lancer la logique de connexion au serveur et au jeu.
+      } else {
+        alert("No online players found.");
+      }
+    }
+
+    document.getElementById("startGameButton").addEventListener("click", () => {
+      const gameMode = document.querySelector('input[name="gameMode"]:checked').value;
+      if (gameMode === "online") {
+        startOnlineGame();
+      } else {
+        const selectedTime = document.getElementById("timeLimit").value;
+        localStorage.setItem("turnTimeLimit", selectedTime);
+
+        const teamNames = {
+          yellow: document.getElementById("yellowTeamName").value,
+          blue: document.getElementById("blueTeamName").value,
+          green: document.getElementById("greenTeamName").value,
+          violet: document.getElementById("violetTeamName").value
+        };
+
+        const teamEmojis = {
+          yellow: document.getElementById("yellowTeamEmoji").value,
+          blue: document.getElementById("blueTeamEmoji").value,
+          green: document.getElementById("greenTeamEmoji").value,
+          violet: document.getElementById("violetTeamEmoji").value
+        };
+
+        localStorage.setItem("teamNames", JSON.stringify(teamNames));
+        localStorage.setItem("teamEmojis", JSON.stringify(teamEmojis));
+        localStorage.setItem("gameStarted", "true");
+        document.getElementById("startMenu").style.display = "none";
+        document.getElementById("uiContainer").style.display = "block";
+        document.getElementById("turnTimerDisplay").style.display = "block";
+        document.getElementById("languageSelection").style.display = "none";
+        document.getElementById("interfaceBar").style.display = "flex";
+        document.getElementById("backgroundMusic").play();
+        initializeGame();
+      }
+    });
+
+    document.getElementById("endGameButton").addEventListener("click", () => {
+      localStorage.removeItem("gameStarted");
+      document.getElementById("startMenu").style.display = "block";
+      document.getElementById("uiContainer").style.display = "none";
+      document.getElementById("turnTimerDisplay").style.display = "none";
+      document.getElementById("languageSelection").style.display = "none";
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      populateEmojiDropdowns();
+    });
+  </script>
+  <script>
+    const translations = {
+      en: {
+        startGame: "Start Game",
+        gameMode: "Game Mode",
+        localGame: "Local Game",
+        onlineGame: "Online Multiplayer",
+        teamCustomization: "Team Customization",
+        teamHealth: "Health",
+        turnTime: "Turn Time:",
+        seconds: "seconds",
+        yellowTeam: "Yellow Team",
+        blueTeam: "Blue Team",
+        greenTeam: "Green Team",
+        violetTeam: "Violet Team",
+        fire: "Fire",
+        restartGame: "Restart Game",
+        endGame: "End Game",
+        chargePower: "Charging Power...",
+        nextTurn: "Next Turn",
+        winnerMessage: "Team {team} wins!",
+        drawMessage: "It's a draw!",
+        yellowTeamName: "Yellow Team Name:",
+        blueTeamName: "Blue Team Name:",
+        greenTeamName: "Green Team Name:",
+        violetTeamName: "Violet Team Name:",
+        activeTeam: "Active Team:",
+        randomizeTeams: "Randomize Teams",
+        levelEditor: "Level Editor",
+        generateLevel: "Generate Level",
+        terrainSmoothness: "Terrain Smoothness:",
+        terrainMinHeight: "Terrain Min Height:",
+        terrainMaxHeight: "Terrain Max Height:",
+        jump: "Jump",
+        musicOn: "Music: On",
+        musicOff: "Music: Off",
+        weaponDamage: "Damage:",
+        fullscreen: "Fullscreen"
+      },
+      fr: {
+        startGame: "Démarrer la Partie",
+        gameMode: "Type de Partie",
+        localGame: "Partie Locale",
+        onlineGame: "Multijoueur en Ligne",
+        teamCustomization: "Personnalisation des équipes",
+        teamHealth: "Vie",
+        turnTime: "Temps par tour:",
+        seconds: "secondes",
+        yellowTeam: "Équipe Jaune",
+        blueTeam: "Équipe Bleue",
+        greenTeam: "Équipe Verte",
+        violetTeam: "Équipe Violette",
+        fire: "Tirer",
+        restartGame: "Réinitialiser la Partie",
+        endGame: "Fin de la Partie",
+        chargePower: "Chargement de la Puissance...",
+        nextTurn: "Tour Suivant",
+        winnerMessage: "L'équipe {team} gagne!",
+        drawMessage: "Match nul!",
+        yellowTeamName: "Nom Équipe Jaune:",
+        blueTeamName: "Nom Équipe Bleue:",
+        greenTeamName: "Nom Équipe Verte:",
+        violetTeamName: "Nom Équipe Violette:",
+        activeTeam: "Équipe active:",
+        randomizeTeams: "Équipes Aléatoires",
+        levelEditor: "Éditeur de Niveau",
+        generateLevel: "Générer le Niveau",
+        terrainSmoothness: "Lissage du Terrain:",
+        terrainMinHeight: "Hauteur Minimum du Terrain:",
+        terrainMaxHeight: "Hauteur Maximum du Terrain:",
+        jump: "Sauter",
+        musicOn: "Musique : Activée",
+        musicOff: "Musique : Désactivée",
+        weaponDamage: "Dégâts:",
+        fullscreen: "Plein écran"
+      },
+      es: {
+        startGame: "Iniciar Juego",
+        gameMode: "Modo de Juego",
+        localGame: "Juego Local",
+        onlineGame: "Multijugador en Línea",
+        teamCustomization: "Personalización de Equipos",
+        teamHealth: "Salud",
+        turnTime: "Tiempo de Turno:",
+        seconds: "segundos",
+        yellowTeam: "Equipo Amarillo",
+        blueTeam: "Equipo Azul",
+        greenTeam: "Equipo Verde",
+        violetTeam: "Equipo Violeta",
+        fire: "Disparar",
+        restartGame: "Reiniciar Juego",
+        endGame: "Finalizar Juego",
+        chargePower: "Cargando Poder...",
+        nextTurn: "Siguiente Turno",
+        winnerMessage: "¡El equipo {team} gana!",
+        drawMessage: "¡Es un empate!",
+        yellowTeamName: "Nombre del Equipo Amarillo:",
+        blueTeamName: "Nombre del Equipo Azul:",
+        greenTeamName: "Nombre del Equipo Verde:",
+        violetTeamName: "Nombre del Equipo Violeta:",
+        activeTeam: "Equipo activo:",
+        randomizeTeams: "Equipos Aleatorios",
+        levelEditor: "Editor de Nivel",
+        generateLevel: "Generar Nivel",
+        terrainSmoothness: "Suavidad del Terreno:",
+        terrainMinHeight: "Altura Mínima del Terreno:",
+        terrainMaxHeight: "Altura Máxima del Terreno:",
+        jump: "Saltar",
+        musicOn: "Música: Activada",
+        musicOff: "Música: Desactivada",
+        weaponDamage: "Daño:",
+        fullscreen: "Pantalla completa"
+      },
+      de: {
+        startGame: "Spiel Starten",
+        gameMode: "Spielmodus",
+        localGame: "Lokales Spiel",
+        onlineGame: "Online Multiplayer",
+        teamCustomization: "Team-Anpassung",
+        teamHealth: "Leben",
+        turnTime: "Zugzeit:",
+        seconds: "Sekunden",
+        yellowTeam: "Gelbes Team",
+        blueTeam: "Blaues Team",
+        greenTeam: "Grünes Team",
+        violetTeam: "Violettes Team",
+        fire: "Feuern",
+        restartGame: "Spiel Neustarten",
+        endGame: "Spiel Beenden",
+        chargePower: "Kraft Laden...",
+        nextTurn: "Nächste Runde",
+        winnerMessage: "Team {team} gewinnt!",
+        drawMessage: "Unentschieden!",
+        yellowTeamName: "Name Gelbes Team:",
+        blueTeamName: "Name Blaues Team:",
+        greenTeamName: "Name Grünes Team:",
+        violetTeamName: "Name Violettes Team:",
+        activeTeam: "Aktives Team:",
+        randomizeTeams: "Teams Zufällig",
+        levelEditor: "Level-Editor",
+        generateLevel: "Level Generieren",
+        terrainSmoothness: "Geländeglättung:",
+        terrainMinHeight: "Mindesthöhe Gelände:",
+        terrainMaxHeight: "Maximalhöhe Gelände:",
+        jump: "Springen",
+        musicOn: "Musik: Ein",
+        musicOff: "Musik: Aus",
+        weaponDamage: "Schaden:",
+        fullscreen: "Vollbild"
+      },
+      it: {
+        startGame: "Inizia Partita",
+        gameMode: "Modalità di Gioco",
+        localGame: "Gioco Locale",
+        onlineGame: "Multigiocatore Online",
+        teamCustomization: "Personalizzazione Squadra",
+        teamHealth: "Salute",
+        turnTime: "Tempo di Turno:",
+        seconds: "secondi",
+        yellowTeam: "Squadra Gialla",
+        blueTeam: "Squadra Blu",
+        greenTeam: "Squadra Verde",
+        violetTeam: "Squadra Viola",
+        fire: "Spara",
+        restartGame: "Riavvia Partita",
+        endGame: "Termina Partita",
+        chargePower: "Caricamento Potenza...",
+        nextTurn: "Prossimo Turno",
+        winnerMessage: "La squadra {team} vince!",
+        drawMessage: "È un pareggio!",
+        yellowTeamName: "Nome Squadra Gialla:",
+        blueTeamName: "Nome Squadra Blu:",
+        greenTeamName: "Nome Squadra Verde:",
+        violetTeamName: "Nome Squadra Viola:",
+        activeTeam: "Squadra attiva:",
+        randomizeTeams: "Randomizza Squadre",
+        levelEditor: "Editor di Livello",
+        generateLevel: "Genera Livello",
+        terrainSmoothness: "Livellamento Terreno:",
+        terrainMinHeight: "Altezza Minima Terreno:",
+        terrainMaxHeight: "Altezza Massima Terreno:",
+        jump: "Salta",
+        musicOn: "Musica: Attiva",
+        musicOff: "Musica: Disattiva",
+        weaponDamage: "Danni:",
+        fullscreen: "Schermo intero"
+      },
+      ru: {
+        startGame: "Начать Игру",
+        gameMode: "Режим Игры",
+        localGame: "Локальная Игра",
+        onlineGame: "Сетевой Режим",
+        teamCustomization: "Настройка Команды",
+        teamHealth: "Здоровье",
+        turnTime: "Время Хода:",
+        seconds: "секунд",
+        yellowTeam: "Желтая Команда",
+        blueTeam: "Синяя Команда",
+        greenTeam: "Зеленая Команда",
+        violetTeam: "Фиолетовая Команда",
+        fire: "Огонь",
+        restartGame: "Перезапустить Игру",
+        endGame: "Завершить Игру",
+        chargePower: "Заряд мощности...",
+        nextTurn: "Следующий ход",
+        winnerMessage: "Команда {team} победила!",
+        drawMessage: "Ничья!",
+        yellowTeamName: "Название жёлтой команды:",
+        blueTeamName: "Название синей команды:",
+        greenTeamName: "Название зелёной команды:",
+        violetTeamName: "Название фиолетовой команды:",
+        activeTeam: "Активная команда:",
+        randomizeTeams: "Случайные Команды",
+        levelEditor: "Редактор Уровня",
+        generateLevel: "Создать Уровень",
+        terrainSmoothness: "Гладкость Террена:",
+        terrainMinHeight: "Мин. Высота Террена:",
+        terrainMaxHeight: "Макс. Высота Террена:",
+        jump: "Прыжок",
+        musicOn: "Музыка: Включена",
+        musicOff: "Музыка: Выключена",
+        weaponDamage: "Урон:",
+        fullscreen: "Полный экран"
+      },
+      pt: {
+        startGame: "Começar Jogo",
+        gameMode: "Modo de Jogo",
+        localGame: "Jogo Local",
+        onlineGame: "Multijogador Online",
+        teamCustomization: "Personalização da Equipe",
+        teamHealth: "Vida",
+        turnTime: "Tempo de Turno:",
+        seconds: "segundos",
+        yellowTeam: "Equipe Amarela",
+        blueTeam: "Equipe Azul",
+        greenTeam: "Equipe Verde",
+        violetTeam: "Equipe Violeta",
+        fire: "Atirar",
+        restartGame: "Reiniciar Jogo",
+        endGame: "Finalizar Jogo",
+        chargePower: "Carregando Poder...",
+        nextTurn: "Próximo Turno",
+        winnerMessage: "Equipe {team} venceu!",
+        drawMessage: "É um empate!",
+        yellowTeamName: "Nome da Equipe Amarela:",
+        blueTeamName: "Nome da Equipe Azul:",
+        greenTeamName: "Nome da Equipe Verde:",
+        violetTeamName: "Nome da Equipe Violeta:",
+        activeTeam: "Equipe ativa:",
+        randomizeTeams: "Equipes Aleatórias",
+        levelEditor: "Editor de Nível",
+        generateLevel: "Gerar Nível",
+        terrainSmoothness: "Suavidade do Terreno:",
+        terrainMinHeight: "Altura Mínima do Terreno:",
+        terrainMaxHeight: "Altura Máxima do Terreno:",
+        jump: "Pular",
+        musicOn: "Música: Ligada",
+        musicOff: "Música: Desligada",
+        weaponDamage: "Dano:",
+        fullscreen: "Tela cheia"
+      },
+      zh: {
+        startGame: "开始游戏",
+        gameMode: "游戏模式",
+        localGame: "本地游戏",
+        onlineGame: "在线多人游戏",
+        teamCustomization: "队伍自定义",
+        teamHealth: "生命值",
+        turnTime: "回合时间:",
+        seconds: "秒",
+        yellowTeam: "黄色队",
+        blueTeam: "蓝色队",
+        greenTeam: "绿色队",
+        violetTeam: "紫色队",
+        fire: "射击",
+        restartGame: "重新开始",
+        endGame: "结束游戏",
+        chargePower: "充能中...",
+        nextTurn: "下一回合",
+        winnerMessage: "{team} 队胜利!",
+        drawMessage: "平局!",
+        yellowTeamName: "黄色队名称:",
+        blueTeamName: "蓝色队名称:",
+        greenTeamName: "绿色队名称:",
+        violetTeamName: "紫色队",
+        activeTeam: "当前队伍:",
+        randomizeTeams: "随机分配队伍",
+        levelEditor: "关卡编辑器",
+        generateLevel: "生成关卡",
+        terrainSmoothness: "地形平滑度:",
+        terrainMinHeight: "地形最低高度:",
+        terrainMaxHeight: "地形最高高度:",
+        jump: "跳跃",
+        musicOn: "音乐：开",
+        musicOff: "音乐：关",
+        weaponDamage: "伤害:",
+        fullscreen: "全屏"
+      },
+      ja: {
+        startGame: "ゲーム開始",
+        gameMode: "ゲームモード",
+        localGame: "ローカルゲーム",
+        onlineGame: "オンラインマルチプレイ",
+        teamCustomization: "チームカスタマイズ",
+        teamHealth: "体力",
+        turnTime: "ターン時間:",
+        seconds: "秒",
+        yellowTeam: "イエローチーム",
+        blueTeam: "ブルーチーム",
+        greenTeam: "グリーンチーム",
+        violetTeam: "バイオレットチーム",
+        fire: "発射",
+        restartGame: "再起動ゲーム",
+        endGame: "ゲーム終了",
+        chargePower: "充電中...",
+        nextTurn: "次のターン",
+        winnerMessage: "チーム {team} 勝利!",
+        drawMessage: "引き分け!",
+        yellowTeamName: "イエローチーム名:",
+        blueTeamName: "ブルーチーム名:",
+        greenTeamName: "グリーンチーム名:",
+        violetTeamName: "バイオレットチーム名:",
+        activeTeam: "現在のチーム:",
+        randomizeTeams: "チームをランダム化",
+        levelEditor: "レベルエディター",
+        generateLevel: "レベル生成",
+        terrainSmoothness: "地形の滑らかさ:",
+        terrainMinHeight: "地形の最小高さ:",
+        terrainMaxHeight: "地形の最大高さ:",
+        jump: "ジャンプ",
+        musicOn: "ミュージック:オン",
+        musicOff: "ミュージック:オフ",
+        weaponDamage: "ダメージ:",
+        fullscreen: "全画面"
+      },
+      ar: {
+        startGame: "ابدأ اللعبة",
+        gameMode: "وضع اللعبة",
+        localGame: "لعبة محلية",
+        onlineGame: "اللعب عبر الإنترنت",
+        teamCustomization: "تخصيص الفريق",
+        teamHealth: "الصحة",
+        turnTime: "وقت الدور:",
+        seconds: "ثواني",
+        yellowTeam: "الفريق الأصفر",
+        blueTeam: "الفريق الأزرق",
+        greenTeam: "الفريق الأخضر",
+        violetTeam: "الفريق البنفسجي",
+        fire: "إطلاق النار",
+        restartGame: "إعادة تشغيل اللعبة",
+        endGame: "إنهاء اللعبة",
+        chargePower: "جارٍ شحن القوة...",
+        nextTurn: "الدور التالي",
+        winnerMessage: "فاز الفريق {team}!",
+        drawMessage: "تعادل!",
+        yellowTeamName: "اسم الفريق الأصفر:",
+        blueTeamName: "اسم الفريق الأزرق:",
+        greenTeamName: "اسم الفريق الأخضر:",
+        violetTeamName: "اسم الفريق البنفسجي:",
+        activeTeam: "الفريق الفعّال:",
+        randomizeTeams: "فرق عشوائية",
+        levelEditor: "محرر المستويات",
+        generateLevel: "توليد المستوى",
+        terrainSmoothness: "نعومة التضاريس:",
+        terrainMinHeight: "الحد الأدنى لارتفاع التضاريس:",
+        terrainMaxHeight: "الحد الأقصى لارتفاع التضاريس:",
+        jump: "قفز",
+        musicOn: "الموسيقى：تشغيل",
+        musicOff: "الموسيقى：إيقاف",
+        weaponDamage: "الضرر:",
+        fullscreen: "شاشة كاملة"
+      }
+    };
+
+    function updateTranslations() {
+      const lang = localStorage.getItem("gameLang") || "en";
+      const startGameButton = document.getElementById("startGameButton");
+      if (startGameButton) startGameButton.textContent = translations[lang].startGame;
+      const gameModeElem = document.getElementById("gameMode");
+      if (gameModeElem) gameModeElem.textContent = translations[lang].gameMode;
+      
+      const yellowLabel = document.querySelector('label[for="yellowTeamName"]');
+      if (yellowLabel) yellowLabel.textContent = translations[lang].yellowTeamName;
+      const blueLabel = document.querySelector('label[for="blueTeamName"]');
+      if (blueLabel) blueLabel.textContent = translations[lang].blueTeamName;
+      const greenLabel = document.querySelector('label[for="greenTeamName"]');
+      if (greenLabel) greenLabel.textContent = translations[lang].greenTeamName;
+      const violetLabel = document.querySelector('label[for="violetTeamName"]');
+      if (violetLabel) violetLabel.textContent = translations[lang].violetTeamName;
+      
+      const timeLimitLabel = document.querySelector('label[for="timeLimit"]');
+      if (timeLimitLabel) timeLimitLabel.textContent = translations[lang].turnTime;
+      
+      document.querySelectorAll("#timeLimit option").forEach(option => {
+        option.textContent = `${option.value} ${translations[lang].seconds}`;
+      });
+      
+      document.querySelectorAll('input[name="gameMode"]').forEach(radio => {
+        const label = radio.closest('label');
+        if (!label) return;
+        label.innerHTML = "";
+        label.appendChild(radio);
+        if (radio.value === "local") {
+          label.appendChild(document.createTextNode(" " + translations[lang].localGame));
+        } else if (radio.value === "online") {
+          label.appendChild(document.createTextNode(" " + translations[lang].onlineGame));
+        }
+      });
+
+      const levelEditorTitle = document.getElementById("levelEditorTitle");
+      if (levelEditorTitle) levelEditorTitle.textContent = translations[lang].levelEditor;
+      const terrainSmoothnessLabel = document.getElementById("terrainSmoothnessLabel");
+      if (terrainSmoothnessLabel) terrainSmoothnessLabel.textContent = translations[lang].terrainSmoothness;
+      const terrainMinHeightLabel = document.getElementById("terrainMinHeightLabel");
+      if (terrainMinHeightLabel) terrainMinHeightLabel.textContent = translations[lang].terrainMinHeight;
+      const terrainMaxHeightLabel = document.getElementById("terrainMaxHeightLabel");
+      if (terrainMaxHeightLabel) terrainMaxHeightLabel.textContent = translations[lang].terrainMaxHeight;
+      const generateLevelButton = document.getElementById("generateLevelButton");
+      if (generateLevelButton) generateLevelButton.textContent = translations[lang].generateLevel;
+      // NEW: Update text for the fullscreen button in the start menu using the translation key "fullscreen"
+      const btnFullscreenStart = document.getElementById("btnFullscreenStart");
+      if (btnFullscreenStart) btnFullscreenStart.textContent = translations[lang].fullscreen;
+    }
+  
+    document.addEventListener("DOMContentLoaded", () => {
+      updateTranslations();
+    });
+  
+    document.querySelectorAll(".language-button").forEach(button => {
+      button.addEventListener("click", () => {
+        localStorage.setItem("gameLang", button.getAttribute("data-lang"));
+        updateTranslations();
+      });
+    });
+  </script>
+  <script>
+    function randomizeTeamEmojis() {
+      const availableEmojis = ['😀', '😎', '😂', '😍', '🤩', '😆', '😅', '🙂', '🙃', '🤣', '😊', '😇', '🥳', '😺', '😹', '😻'];
+      let shuffledEmojis = availableEmojis.sort(() => 0.5 - Math.random()).slice(0, 4);
+
+      const teamEmojis = {
+        yellow: shuffledEmojis[0],
+        blue: shuffledEmojis[1],
+        green: shuffledEmojis[2],
+        violet: shuffledEmojis[3]
+      };
+
+      document.getElementById("yellowTeamEmoji").value = teamEmojis.yellow;
+      document.getElementById("blueTeamEmoji").value = teamEmojis.blue;
+      document.getElementById("greenTeamEmoji").value = teamEmojis.green;
+      document.getElementById("violetTeamEmoji").value = teamEmojis.violet;
+
+      localStorage.setItem("teamEmojis", JSON.stringify(teamEmojis));
+    }
+
+    document.getElementById("randomizeTeamsButton").addEventListener("click", randomizeTeamEmojis);
+  </script>
+  <script>
+    function showEndGameOverlay(winningTeam) {
+      const overlay = document.getElementById("endGameOverlay");
+      let message = "";
+      if (winningTeam) {
+        const bgMusic = document.getElementById("backgroundMusic");
+        if (bgMusic) {
+          bgMusic.pause();
+          bgMusic.currentTime = 0;
+        }
+        const teamNamesStored = JSON.parse(localStorage.getItem("teamNames")) || {};
+        const customName = teamNamesStored[winningTeam] || winningTeam;
+        const emoji = teamEmojiStyles[winningTeam].emoji;
+        const teamHealth = teams[winningTeam].reduce((sum, worm) => sum + Math.max(worm.health, 0), 0);
+        message = `<div class="endGameContent">
+                     <div class="winnerEmoji">${emoji}</div>
+                     <div class="winnerName">${customName}</div>
+                     <div class="winnerHealth">Points: ${teamHealth}</div>
+                     <button id="restartButtonOverlay">Restart Game</button>
+                   </div>`;
+      } else {
+        message = `<div class="endGameContent">
+                     <div class="winnerName">It's a draw!</div>
+                     <button id="restartButtonOverlay">Restart Game</button>
+                   </div>`;
+      }
+      overlay.innerHTML = message;
+      overlay.style.display = "flex";
+      if (winningTeam) {
+        const winSound = new Audio('/Win.wav');
+        winSound.play();
+      }
+      document.getElementById("uiContainer").style.display = "none";
+      document.getElementById("turnTimerDisplay").style.display = "none";
+      document.getElementById("restartButtonOverlay").addEventListener("click", () => {
+        window.location.reload();
+      });
+    }
+
+    document.addEventListener("DOMContentLoaded", () => {
+      const canvas = document.getElementById("gameCanvas");
+      if (canvas) {
+        document.getElementById("terrainMinHeight").value = Math.round(canvas.height/2 + 50);
+        document.getElementById("terrainMaxHeight").value = Math.round(canvas.height/2 + 150);
+      }
+
+      const terrainSmoothnessInput = document.getElementById("terrainSmoothness");
+      const terrainSmoothnessValue = document.getElementById("terrainSmoothnessValue");
+      terrainSmoothnessInput.addEventListener("input", () => {
+        terrainSmoothnessValue.textContent = terrainSmoothnessInput.value;
+      });
+
+      function generateLevelPreview() {
+        const smoothness = parseInt(document.getElementById("terrainSmoothness").value);
+        const minHeight = parseInt(document.getElementById("terrainMinHeight").value);
+        const maxHeight = parseInt(document.getElementById("terrainMaxHeight").value);
+        const previewWidth = 300, previewHeight = 150;
+        const gameCanvas = document.getElementById("gameCanvas");
+        const gameWidth = gameCanvas ? gameCanvas.width : 800;
+        let terrain = [];
+        let y = Math.random() * (maxHeight - minHeight) + minHeight;
+        for (let x = 0; x < gameWidth; x++) {
+          const yChange = (Math.random() * 2 - 1) * smoothness;
+          y += yChange;
+          y = Math.max(minHeight, Math.min(maxHeight, y));
+          terrain.push({ x: x, y: y });
+        }
+        const scaleX = previewWidth / gameWidth;
+        const scaleY = previewHeight / (maxHeight - minHeight);
+        let points = terrain.map(pt => {
+          const scaledX = pt.x * scaleX;
+          const scaledY = previewHeight - ((pt.y - minHeight) * scaleY);
+          return `${scaledX},${scaledY}`;
+        }).join(" ");
+
+        const svgNS = "http://www.w3.org/2000/svg";
+        const svgElem = document.createElementNS(svgNS, "svg");
+        svgElem.setAttribute("width", previewWidth);
+        svgElem.setAttribute("height", previewHeight);
+        const bg = document.createElementNS(svgNS, "rect");
+        bg.setAttribute("x", 0);
+        bg.setAttribute("y", 0);
+        bg.setAttribute("width", previewWidth);
+        bg.setAttribute("height", previewHeight);
+        bg.setAttribute("fill", "#7FFF00");
+        svgElem.appendChild(bg);
+        const polyline = document.createElementNS(svgNS, "polyline");
+        polyline.setAttribute("points", points);
+        polyline.setAttribute("fill", "none");
+        polyline.setAttribute("stroke", "#008000");
+        polyline.setAttribute("stroke-width", 2);
+        svgElem.appendChild(polyline);
+        const scope = this;
+        const previewContainer = document.getElementById("levelPreview");
+        previewContainer.innerHTML = "";
+        previewContainer.appendChild(svgElem);
+      }
+
+      document.getElementById("generateLevelButton").addEventListener("click", () => {
+        localStorage.setItem("terrainSmoothness", document.getElementById("terrainSmoothness").value);
+        localStorage.setItem("terrainMinHeight", document.getElementById("terrainMinHeight").value);
+        localStorage.setItem("terrainMaxHeight", document.getElementById("terrainMaxHeight").value);
+        generateLevelPreview();
+      });
+
+      generateLevelPreview();
+
+      const lang = localStorage.getItem("gameLang") || "en";
+      document.getElementById("levelEditorTitle").textContent = translations[lang].levelEditor;
+      document.getElementById("terrainSmoothnessLabel").textContent = translations[lang].terrainSmoothness;
+      document.getElementById("terrainMinHeightLabel").textContent = translations[lang].terrainMinHeight;
+      document.getElementById("terrainMaxHeightLabel").textContent = translations[lang].terrainMaxHeight;
+      document.getElementById("generateLevelButton").textContent = translations[lang].generateLevel;
+    });
+  </script>
+  <script>
+    document.getElementById("musicToggleButton").addEventListener("click", function() {
+      const bgMusic = document.getElementById("backgroundMusic");
+      if (bgMusic.paused) {
+        bgMusic.play();
+        this.textContent = "Music: On";
+      } else {
+        bgMusic.pause();
+        this.textContent = "Music: Off";
+      }
+    });
+  </script>
+  <script>
+    function attachHoldButton(buttonId, callback, interval = 100) {
+      const btn = document.getElementById(buttonId);
+      let timer = null;
+      btn.addEventListener("mousedown", function(event) {
+        event.preventDefault();
+        callback();
+        timer = setInterval(callback, interval);
+      });
+      btn.addEventListener("mouseup", function() {
+        clearInterval(timer);
+      });
+      btn.addEventListener("mouseleave", function() {
+        clearInterval(timer);
+      });
+      btn.addEventListener("touchstart", function(event) {
+        event.preventDefault();
+        callback();
+        timer = setInterval(callback, interval);
+      });
+      btn.addEventListener("touchend", function() {
+        clearInterval(timer);
+      });
+    }
+
+    attachHoldButton('btnUp', () => {
+      currentAngle += angleIncrement;
+    });
+
+    attachHoldButton('btnDown', () => {
+      currentAngle -= angleIncrement;
+    });
+
+    attachHoldButton('btnLeft', () => {
+      if (activeWorm) Body.setVelocity(activeWorm, { x: -2, y: activeWorm.velocity.y });
+    });
+
+    attachHoldButton('btnRight', () => {
+      if (activeWorm) Body.setVelocity(activeWorm, { x: 2, y: activeWorm.velocity.y });
+    });
+
+    attachHoldButton('btnJump', () => {
+      if (activeWorm) {
+        jumpWorm(activeWorm);
+      }
+    });
+
+    (function(){
+      const weaponSelect = document.getElementById("weaponSelectBar");
+      let weaponSelectInterval = null;
+      
+      function changeWeaponSelection(direction) {
+        let currentIndex = weaponSelect.selectedIndex;
+        let newIndex = currentIndex + direction;
+        const optionsCount = weaponSelect.options.length;
+        if (newIndex < 0) newIndex = optionsCount - 1;
+        if (newIndex >= optionsCount) newIndex = 0;
+        weaponSelect.selectedIndex = newIndex;
+      }
+      
+      weaponSelect.addEventListener("keydown", function(e) {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          e.preventDefault();
+          changeWeaponSelection(e.key === "ArrowLeft" ? -1 : 1);
+          if (!weaponSelectInterval) {
+            weaponSelectInterval = setInterval(() => {
+              changeWeaponSelection(e.key === "ArrowLeft" ? -1 : 1);
+            }, 200);
+          }
+        }
+      });
+      
+      weaponSelect.addEventListener("keyup", function(e) {
+        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+          clearInterval(weaponSelectInterval);
+          weaponSelectInterval = null;
+        }
+      });
+      
+      weaponSelect.addEventListener("blur", function(){
+        clearInterval(weaponSelectInterval);
+        weaponSelectInterval = null;
+      });
+    })();
+  </script>
+  <script>
+    (function() {
+      const btnFire = document.getElementById('btnFire');
+      const newBtnFire = btnFire.cloneNode(true);
+      btnFire.parentNode.replaceChild(newBtnFire, btnFire);
+      
+      let fireChargeInterval = null;
+      let isCharging = false;
+      let launchForce = 0;
+      
+      newBtnFire.addEventListener('mousedown', () => {
+        if (activeWorm) {
+          const weaponType = document.getElementById('weaponSelectBar').value;
+          if (weaponType === 'apple' || weaponType === 'banana') {
+            if (!isCharging) {
+              isCharging = true;
+              launchForce = 0;
+              fireChargeInterval = setInterval(() => {
+                if (!isCharging) {
+                  clearInterval(fireChargeInterval);
+                  document.getElementById('chargeBar').style.width = '0%';
+                  return;
+                }
+                launchForce += 0.5;
+                if (launchForce >= 50) {
+                  launchForce = 50;
+                  document.getElementById('chargeBar').style.width = '100%';
+                  isCharging = false;
+                  clearInterval(fireChargeInterval);
+                  fireWeaponWithForce(weaponType, activeWorm, launchForce);
+                } else {
+                  document.getElementById('chargeBar').style.width = `${(launchForce/50)*100}%`;
+                }
+              }, 50);
+            }
+          }
+        }
+      });
+      
+      newBtnFire.addEventListener('mouseup', () => {
+        if (activeWorm) {
+          const weaponType = document.getElementById('weaponSelectBar').value;
+          if (isCharging && (weaponType === 'apple' || weaponType === 'banana')) {
+            isCharging = false;
+            clearInterval(fireChargeInterval);
+            fireWeaponWithForce(weaponType, activeWorm, launchForce);
+            launchForce = 0;
+            document.getElementById('chargeBar').style.width = '0%';
+          }
+          else if (weaponType !== 'apple' && weaponType !== 'banana') {
+            fireWeapon(weaponType, activeWorm);
+          }
+        }
+      });
+      
+      newBtnFire.addEventListener('mouseleave', () => {
+        if (isCharging) {
+          isCharging = false;
+          clearInterval(fireChargeInterval);
+          document.getElementById('chargeBar').style.width = '0%';
+        }
+      });
+    })();
+  </script>
+  <script>
+    document.getElementById("btnFullscreen").addEventListener("click", function() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+  </script>
+  <script>
+    const btnFullscreenStart = document.getElementById("btnFullscreenStart");
+    if (btnFullscreenStart) {
+      btnFullscreenStart.addEventListener("click", function() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(err => {
+            console.error(`Error attempting to enable full-screen mode: ${err.message} (${err.name})`);
+          });
+        } else {
+          document.exitFullscreen();
+        }
+      });
+    }
+  </script>
+</body>
+</html>
