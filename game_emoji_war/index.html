@@ -343,19 +343,20 @@
   <script src="js/game.js"></script>
     <script>
       (function(){
-        const weaponSelect = document.getElementById("weaponSelectBar");
+        const weaponSelectBar = document.getElementById("weaponSelectBar");
         let weaponSelectInterval = null;
-      
+
       function changeWeaponSelection(direction) {
-        let currentIndex = weaponSelect.selectedIndex;
+        let currentIndex = weaponSelectBar.selectedIndex;
         let newIndex = currentIndex + direction;
-        const optionsCount = weaponSelect.options.length;
+        const optionsCount = weaponSelectBar.options.length;
         if (newIndex < 0) newIndex = optionsCount - 1;
         if (newIndex >= optionsCount) newIndex = 0;
-        weaponSelect.selectedIndex = newIndex;
+        weaponSelectBar.selectedIndex = newIndex;
+        weaponSelectBar.dispatchEvent(new Event("change"));
       }
-      
-      weaponSelect.addEventListener("keydown", function(e) {
+
+      weaponSelectBar.addEventListener("keydown", function(e) {
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
           e.preventDefault();
           changeWeaponSelection(e.key === "ArrowLeft" ? -1 : 1);
@@ -366,15 +367,15 @@
           }
         }
       });
-      
-      weaponSelect.addEventListener("keyup", function(e) {
+
+      weaponSelectBar.addEventListener("keyup", function(e) {
         if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
           clearInterval(weaponSelectInterval);
           weaponSelectInterval = null;
         }
       });
-      
-      weaponSelect.addEventListener("blur", function(){
+
+      weaponSelectBar.addEventListener("blur", function(){
         clearInterval(weaponSelectInterval);
         weaponSelectInterval = null;
       });

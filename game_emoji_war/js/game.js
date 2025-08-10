@@ -276,6 +276,7 @@ mouse.element.addEventListener("mousewheel", function(e) {
 
 // Weapon selection and firing UI elements
 const weaponSelect = document.getElementById('weaponSelect');
+const weaponSelectBar = document.getElementById('weaponSelectBar');
 const fireButton = document.getElementById('fireButton');
 const weaponDamageIndicator = document.getElementById('weaponDamage');
 const activeTeamIndicator = document.getElementById('activeTeam');
@@ -288,6 +289,12 @@ weaponSelect.addEventListener('change', () => {
   const selectedWeapon = weaponSelect.value;
   weaponDamageIndicator.textContent = `Damage: ${weaponDamage[selectedWeapon]}`;
 });
+if (weaponSelectBar) {
+  weaponSelectBar.addEventListener('change', () => {
+    weaponSelect.value = weaponSelectBar.value;
+    weaponDamageIndicator.textContent = `Damage: ${weaponDamage[weaponSelect.value]}`;
+  });
+}
 fireButton.addEventListener('mousedown', () => {
   if (weaponSelect.value === 'apple' || weaponSelect.value === 'banana') {
     if (!isCharging) {
@@ -429,8 +436,10 @@ on(Actions.CHANGE_WEAPON, () => {
   let nextIndex = (currentIndex + 1) % weaponSelect.options.length;
   weaponSelect.selectedIndex = nextIndex;
   weaponDamageIndicator.textContent = `Damage: ${weaponDamage[weaponSelect.value]}`;
-  let weaponSelectBar = document.getElementById("weaponSelectBar");
-  if (weaponSelectBar) weaponSelectBar.selectedIndex = nextIndex;
+  if (weaponSelectBar) {
+    weaponSelectBar.selectedIndex = nextIndex;
+    weaponSelectBar.dispatchEvent(new Event('change'));
+  }
 });
 
 // 
