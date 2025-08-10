@@ -278,12 +278,12 @@
   <canvas id="gameCanvas"></canvas>
   <!-- New Interface Bar placed over the game canvas in the lower area -->
   <div id="interfaceBar">
-    <button id="btnUp">↑</button>
-    <button id="btnDown">↓</button>
-    <button id="btnLeft">←</button>
-    <button id="btnRight">→</button>
-    <button id="btnJump">⏶ Jump</button>
-    <button id="btnFire">Fire</button>
+    <button id="btnUp" data-action="AIM_UP" data-hold="true">↑</button>
+    <button id="btnDown" data-action="AIM_DOWN" data-hold="true">↓</button>
+    <button id="btnLeft" data-action="MOVE_LEFT" data-hold="true">←</button>
+    <button id="btnRight" data-action="MOVE_RIGHT" data-hold="true">→</button>
+    <button id="btnJump" data-action="JUMP">⏶ Jump</button>
+    <button id="btnFire" data-action="FIRE">Fire</button>
     <select id="weaponSelectBar">
       <option value="apple">🍎 Apple</option>
       <option value="banana">🍌 Banana</option>
@@ -339,61 +339,12 @@
   </script>
   <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+  <script src="js/inputManager.js"></script>
   <script src="js/game.js"></script>
-  <script>
-    function attachHoldButton(buttonId, callback, interval = 100) {
-      const btn = document.getElementById(buttonId);
-      let timer = null;
-      btn.addEventListener("mousedown", function(event) {
-        event.preventDefault();
-        callback();
-        timer = setInterval(callback, interval);
-      });
-      btn.addEventListener("mouseup", function() {
-        clearInterval(timer);
-      });
-      btn.addEventListener("mouseleave", function() {
-        clearInterval(timer);
-      });
-      btn.addEventListener("touchstart", function(event) {
-        event.preventDefault();
-        callback();
-        timer = setInterval(callback, interval);
-      });
-      btn.addEventListener("touchend", function() {
-        clearInterval(timer);
-      });
-    }
-
-    attachHoldButton('btnUp', () => {
-      currentAngle += angleIncrement;
-    });
-
-    attachHoldButton('btnDown', () => {
-      currentAngle -= angleIncrement;
-    });
-
-    attachHoldButton('btnLeft', () => {
-      if (activeWorm) {
-        Body.setVelocity(activeWorm, { x: -2, y: activeWorm.velocity.y });
-      }
-    });
-
-    attachHoldButton('btnRight', () => {
-      if (activeWorm) {
-        Body.setVelocity(activeWorm, { x: 2, y: activeWorm.velocity.y });
-      }
-    });
-
-    attachHoldButton('btnJump', () => {
-      if (activeWorm) {
-        jumpWorm(activeWorm);
-      }
-    });
-
-    (function(){
-      const weaponSelect = document.getElementById("weaponSelectBar");
-      let weaponSelectInterval = null;
+    <script>
+      (function(){
+        const weaponSelect = document.getElementById("weaponSelectBar");
+        let weaponSelectInterval = null;
       
       function changeWeaponSelection(direction) {
         let currentIndex = weaponSelect.selectedIndex;
@@ -427,8 +378,8 @@
         clearInterval(weaponSelectInterval);
         weaponSelectInterval = null;
       });
-    })();
-  </script>
+      })();
+    </script>
   <script>
     const availableEmojis = ['😀', '😎', '😂', '😍', '🤩', '😆', '😅', '🙂', '🙃', '🤣', '😊', '😇', '🥳', '😺', '😹', '😻'];
     const selectedEmojis = new Set();
@@ -1101,155 +1052,7 @@
       }
     });
   </script>
-  <script>
-    function attachHoldButton(buttonId, callback, interval = 100) {
-      const btn = document.getElementById(buttonId);
-      let timer = null;
-      btn.addEventListener("mousedown", function(event) {
-        event.preventDefault();
-        callback();
-        timer = setInterval(callback, interval);
-      });
-      btn.addEventListener("mouseup", function() {
-        clearInterval(timer);
-      });
-      btn.addEventListener("mouseleave", function() {
-        clearInterval(timer);
-      });
-      btn.addEventListener("touchstart", function(event) {
-        event.preventDefault();
-        callback();
-        timer = setInterval(callback, interval);
-      });
-      btn.addEventListener("touchend", function() {
-        clearInterval(timer);
-      });
-    }
-
-    attachHoldButton('btnUp', () => {
-      currentAngle += angleIncrement;
-    });
-
-    attachHoldButton('btnDown', () => {
-      currentAngle -= angleIncrement;
-    });
-
-    attachHoldButton('btnLeft', () => {
-      if (activeWorm) Body.setVelocity(activeWorm, { x: -2, y: activeWorm.velocity.y });
-    });
-
-    attachHoldButton('btnRight', () => {
-      if (activeWorm) Body.setVelocity(activeWorm, { x: 2, y: activeWorm.velocity.y });
-    });
-
-    attachHoldButton('btnJump', () => {
-      if (activeWorm) {
-        jumpWorm(activeWorm);
-      }
-    });
-
-    (function(){
-      const weaponSelect = document.getElementById("weaponSelectBar");
-      let weaponSelectInterval = null;
-      
-      function changeWeaponSelection(direction) {
-        let currentIndex = weaponSelect.selectedIndex;
-        let newIndex = currentIndex + direction;
-        const optionsCount = weaponSelect.options.length;
-        if (newIndex < 0) newIndex = optionsCount - 1;
-        if (newIndex >= optionsCount) newIndex = 0;
-        weaponSelect.selectedIndex = newIndex;
-      }
-      
-      weaponSelect.addEventListener("keydown", function(e) {
-        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-          e.preventDefault();
-          changeWeaponSelection(e.key === "ArrowLeft" ? -1 : 1);
-          if (!weaponSelectInterval) {
-            weaponSelectInterval = setInterval(() => {
-              changeWeaponSelection(e.key === "ArrowLeft" ? -1 : 1);
-            }, 200);
-          }
-        }
-      });
-      
-      weaponSelect.addEventListener("keyup", function(e) {
-        if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
-          clearInterval(weaponSelectInterval);
-          weaponSelectInterval = null;
-        }
-      });
-      
-      weaponSelect.addEventListener("blur", function(){
-        clearInterval(weaponSelectInterval);
-        weaponSelectInterval = null;
-      });
-    })();
-  </script>
-  <script>
-    (function() {
-      const btnFire = document.getElementById('btnFire');
-      const newBtnFire = btnFire.cloneNode(true);
-      btnFire.parentNode.replaceChild(newBtnFire, btnFire);
-      
-      let fireChargeInterval = null;
-      let isCharging = false;
-      let launchForce = 0;
-      
-      newBtnFire.addEventListener('mousedown', () => {
-        if (activeWorm) {
-          const weaponType = document.getElementById('weaponSelectBar').value;
-          if (weaponType === 'apple' || weaponType === 'banana') {
-            if (!isCharging) {
-              isCharging = true;
-              launchForce = 0;
-              fireChargeInterval = setInterval(() => {
-                if (!isCharging) {
-                  clearInterval(fireChargeInterval);
-                  document.getElementById('chargeBar').style.width = '0%';
-                  return;
-                }
-                launchForce += 0.5;
-                if (launchForce >= 50) {
-                  launchForce = 50;
-                  document.getElementById('chargeBar').style.width = '100%';
-                  isCharging = false;
-                  clearInterval(fireChargeInterval);
-                  fireWeaponWithForce(weaponType, activeWorm, launchForce);
-                } else {
-                  document.getElementById('chargeBar').style.width = `${(launchForce/50)*100}%`;
-                }
-              }, 50);
-            }
-          }
-        }
-      });
-      
-      newBtnFire.addEventListener('mouseup', () => {
-        if (activeWorm) {
-          const weaponType = document.getElementById('weaponSelectBar').value;
-          if (isCharging && (weaponType === 'apple' || weaponType === 'banana')) {
-            isCharging = false;
-            clearInterval(fireChargeInterval);
-            fireWeaponWithForce(weaponType, activeWorm, launchForce);
-            launchForce = 0;
-            document.getElementById('chargeBar').style.width = '0%';
-          }
-          else if (weaponType !== 'apple' && weaponType !== 'banana') {
-            fireWeapon(weaponType, activeWorm);
-          }
-        }
-      });
-      
-      newBtnFire.addEventListener('mouseleave', () => {
-        if (isCharging) {
-          isCharging = false;
-          clearInterval(fireChargeInterval);
-          document.getElementById('chargeBar').style.width = '0%';
-        }
-      });
-    })();
-  </script>
+    <!-- Input handling is managed by InputManager; inline touch/mouse scripts removed -->
   <script>
     document.getElementById("btnFullscreen").addEventListener("click", function() {
       if (!document.fullscreenElement) {
