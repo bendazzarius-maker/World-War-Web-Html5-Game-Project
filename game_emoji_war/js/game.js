@@ -1054,7 +1054,11 @@ async function showTurnChangeMessage(team) {
   overlay.innerHTML = `<div>Team ${team} is playing next!</div><button id="continueButton">OK</button>`;
   document.body.appendChild(overlay);
   return new Promise(resolve => {
-    document.getElementById("continueButton").addEventListener("click", () => {
+    const button = document.getElementById("continueButton");
+    const handler = () => button.click();
+    InputManager.on(InputManager.Actions.CONFIRM_TURN, handler);
+    button.addEventListener("click", () => {
+      InputManager.off(InputManager.Actions.CONFIRM_TURN, handler);
       document.body.removeChild(overlay);
       resolve();
     });

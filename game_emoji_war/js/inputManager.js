@@ -7,7 +7,8 @@
     JUMP: 'JUMP',
     FIRE_START: 'FIRE_START',
     FIRE_END: 'FIRE_END',
-    CHANGE_WEAPON: 'CHANGE_WEAPON'
+    CHANGE_WEAPON: 'CHANGE_WEAPON',
+    CONFIRM_TURN: 'CONFIRM_TURN'
   };
 
   const callbacks = {};
@@ -17,6 +18,9 @@
     if(callbacks[action]) callbacks[action].push(cb);
   }
 
+  function off(action, cb){
+    if(callbacks[action]) callbacks[action] = callbacks[action].filter(f => f !== cb);
+  }
   function emit(action){
     (callbacks[action] || []).forEach(cb => cb());
   }
@@ -38,6 +42,9 @@
     if(action){
       e.preventDefault();
       emit(action);
+    }
+    if(e.key === 'Enter'){
+      emit(Actions.CONFIRM_TURN);
     }
   });
   document.addEventListener('keyup', e => {
@@ -87,7 +94,7 @@
   });
 
   // Gamepad support
-  const prevState = { fire:false, jump:false, change:false };
+  const prevState = { fire:false, jump:false, change:false, confirm:false };
   function pollGamepads(){
     const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
     for(const gp of gamepads){
@@ -101,19 +108,22 @@
       const fire = gp.buttons[0] && gp.buttons[0].pressed;
       const jump = gp.buttons[1] && gp.buttons[1].pressed;
       const change = gp.buttons[2] && gp.buttons[2].pressed;
+      const confirm = gp.buttons[3] && gp.buttons[3].pressed;
 
       if(fire && !prevState.fire) emit(Actions.FIRE_START);
       if(!fire && prevState.fire) emit(Actions.FIRE_END);
       if(jump && !prevState.jump) emit(Actions.JUMP);
       if(change && !prevState.change) emit(Actions.CHANGE_WEAPON);
+      if(confirm && !prevState.confirm) emit(Actions.CONFIRM_TURN);
 
       prevState.fire = fire;
       prevState.jump = jump;
       prevState.change = change;
+      prevState.confirm = confirm;
     }
     requestAnimationFrame(pollGamepads);
   }
   pollGamepads();
 
-  global.InputManager = { Actions, on };
+  global.InputManager = { Actions, on, off };
 })(window);
